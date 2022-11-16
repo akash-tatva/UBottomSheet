@@ -64,14 +64,14 @@ public class UBottomSheetCoordinator: NSObject {
      - parameter parent: UIViewController
      - parameter delegate: UBottomSheetCoordinatorDelegate
      */
-    public init(parent: UIViewController, delegate: UBottomSheetCoordinatorDelegate? = nil) {
+    public init(parent: UIViewController, delegate: UBottomSheetCoordinatorDelegate? = nil, dataSource: UBottomSheetCoordinatorDataSource?) {
         super.init()
         self.parent = parent
-        self.dataSource = parent
+        self.dataSource = dataSource!
         self.delegate = delegate
         
-        minSheetPosition = dataSource.sheetPositions(availableHeight).min()
-        maxSheetPosition = dataSource.sheetPositions(availableHeight).max()
+        minSheetPosition = self.dataSource.sheetPositions(availableHeight).min()
+        maxSheetPosition = self.dataSource.sheetPositions(availableHeight).max()
     }
     
     /**
@@ -134,27 +134,22 @@ public class UBottomSheetCoordinator: NSObject {
      ```
      - parameter item: view controller which conforms to the Draggable or navigation controller which contains draggable view controllers.
      - parameter parent: parent view controller
-     - parameter animated: if true, the sheet is being added to the view controller using an animation (default is true).
      - parameter didContainerCreate: triggered when container view created so you can modify the container if needed.
-     - parameter completion: called upon the completion of adding item
      */
     public func addSheet(_ item: UIViewController,
                          to parent: UIViewController,
-                         animated: Bool = true,
-                         didContainerCreate: ((UIView) -> Void)? = nil,
-                         completion: (() -> Void)? = nil) {
+                         didContainerCreate: ((UIView) -> Void)? = nil) {
          self.usesNavigationController = item is UINavigationController
          let container = PassThroughView()
          self.container = container
          parent.view.addSubview(container)
          let position = dataSource.initialPosition(availableHeight)
-         parent.ub_add(item, in: container, animated: animated, topInset: position) { [weak self] in
+         parent.ub_add(item, in: container, topInset: position) { [weak self] in
              guard let sSelf = self else {
                 return
              }
              sSelf.delegate?.bottomSheet(container,
                                          didPresent: .finished(position, sSelf.calculatePercent(at: position)))
-            completion?()
          }
          didContainerCreate?(container)
          setPosition(dataSource.initialPosition(availableHeight), animated: false)
@@ -164,18 +159,14 @@ public class UBottomSheetCoordinator: NSObject {
      Adds a new view child controller to the current container view
      
      - parameter item: view controller which conforms to the Draggable protocol
-     - parameter completion: called upon completion of animation
      */
-    public func addSheetChild(_ item: DraggableItem, completion:  ((Bool) -> Void)? = nil) {
+    public func addSheetChild(_ item: DraggableItem) {
         parent.addChild(item)
         container!.addSubview(item.view)
         item.didMove(toParent: parent)
         item.view.frame = container!.bounds.offsetBy(dx: 0, dy: availableHeight)
-
         UIView.animate(withDuration: 0.3) {
             item.view.frame = self.container!.bounds
-        } completion: { finished in
-            completion?(finished)
         }
     }
     
@@ -289,16 +280,14 @@ public class UBottomSheetCoordinator: NSObject {
      Remove child view controller from the container.
      
      - parameter item: view controller which conforms to the Draggable protocol
-     - parameter completion: called upon completion of animation
      */
-    public func removeSheetChild<T: DraggableItem>(item: T, completion: ((Bool) -> Void)? = nil) {
+    public func removeSheetChild<T: DraggableItem>(item: T) {
         stopTracking(item: item)
         let _item = usesNavigationController ? item.navigationController! : item
         UIView.animate(withDuration: 0.3, animations: {
             _item.view.frame = _item.view.frame.offsetBy(dx: 0, dy: _item.view.frame.height)
         }) { (finished) in
             _item.ub_remove()
-            completion?(finished)
         }
     }
     
@@ -306,10 +295,8 @@ public class UBottomSheetCoordinator: NSObject {
      Remove sheet from the parent.
      
      - parameter block: use this closure to apply custom sheet dismissal animation
-     - parameter completion: called upon completion of animation
-     
      */
-    public func removeSheet(_ block: ((_ container: UIView?) -> Void)? = nil, completion: ((Bool) -> Void)? = nil) {
+    public func removeSheet(_ block: ((_ container: UIView?) -> Void)? = nil) {
         self.draggables.removeAll()
         guard block == nil else {
             block?(container)
@@ -323,7 +310,6 @@ public class UBottomSheetCoordinator: NSObject {
         }) { [weak self ] finished in
             self?.container?.removeFromSuperview()
             self?.removeDropShadow()
-            completion?(finished)
         }
     }
     
@@ -508,7 +494,7 @@ public class UBottomSheetCoordinator: NSObject {
      - parameter currentPosition: current top constraint value of container view
      */
     private func filteredPositions(_ velocity: CGPoint, currentPosition: CGFloat) -> [CGFloat] {
-        if velocity.y < -100 { /// dragging up
+        if velocity.y < 100 { /// dragging up
             let data = dataSource.sheetPositions(availableHeight).filter { (p) -> Bool in
                 p < currentPosition
             }

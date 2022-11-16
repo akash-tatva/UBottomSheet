@@ -9,7 +9,7 @@
 import UIKit
 
 ///Data source
-public protocol UBottomSheetCoordinatorDataSource: AnyObject {
+public protocol UBottomSheetCoordinatorDataSource: class {
     ///Gesture end animation
     var animator: Animatable? { get }
     ///Sheet positions. For example top, middle, bottom y values.
@@ -35,7 +35,18 @@ public protocol UBottomSheetCoordinatorDataSource: AnyObject {
 ///Default data source implementation
 extension UBottomSheetCoordinatorDataSource {
     public func sheetPositions(_ availableHeight: CGFloat) -> [CGFloat] {
-        return [0.2, 0.7].map { $0 * availableHeight }
+        let window = UIApplication.shared.windows[0]
+        var topPadding:CGFloat = 0.0
+        if #available(iOS 11.0, *) {
+            topPadding = window.safeAreaInsets.top
+        } else {
+            // Fallback on earlier versions
+        }
+        let array = [(0.01 * availableHeight)+topPadding+42, (0.01 * availableHeight)+topPadding+367+120]
+        
+        return array
+
+//        return [0.2, 0.7].map { $0 * availableHeight }
     }
     
     public var animator: Animatable?{
@@ -43,7 +54,15 @@ extension UBottomSheetCoordinatorDataSource {
     }
     
     public func initialPosition(_ availableHeight: CGFloat) -> CGFloat {
-        return availableHeight * 0.2
+        var topPadding:CGFloat = 0.0
+        let window = UIApplication.shared.windows[0]
+        if #available(iOS 11.0, *) {
+            topPadding = window.safeAreaInsets.top
+        } else {
+            // Fallback on earlier versions
+        }
+        return (0.01 * availableHeight)+topPadding+367+120
+//        return availableHeight * 0.2
     }
     
     public func rubberBandLogicTop(_ total: CGFloat, _ limit: CGFloat) -> CGFloat {
@@ -65,5 +84,4 @@ extension UBottomSheetCoordinatorDataSource {
 }
 
 ///By default make all the view controller conforms to the UBottomSheetCoordinatorDataSource.
-extension UIViewController: UBottomSheetCoordinatorDataSource {}
-
+//extension UIViewController: UBottomSheetCoordinatorDataSource {}
